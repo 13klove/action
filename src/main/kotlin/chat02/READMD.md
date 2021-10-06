@@ -114,15 +114,169 @@ class Person(
   var age: Int // 쓰기가능 field, getter, setter 지원
   ) {}
 ```
+
 ## 커스텀 접근자
 * property의 접근자(getter)를 정의할 수 있다.
   * 이런 경우 field 접근시에 매번 개산을 하게 된다.
+  * 커스텀 접근자에서 변수에 접근하려면 field를 사용한다.
   * 커스텀 접근자와 param이 없는 메서드는 성능차이는 없으나 가독성이 더 좋다.
   
 ```kotlin
+class Bot(
+    val name: String,
+) {
+    val move: String
+        get() {
+            return "$name gogo"
+        }
 
+    var repair: String = "ok"
+        get() = "$name $field"
+
+}
 ```
 
+## Directory, package
+* kotlin 앞에 package를 선언 할 수 있다.
+* package 안의 메서드, class, property들은 import로 어디서든 사용 가능
+* kotlin은 여러 class를 하나의 file에 넣는걸 주저할 필요 없다.
+
+## enum, when
+* enum은 값, propery, method로 정의 된다.
+* class와 다르게 ';'로 method 영역과 구분해야 한다.
+```kotlin
+enum class Color(
+    r: Int,
+    g: Int,
+    b: Int
+) {
+    
+    RED(255, 0, 0),
+    YELLOW(0, 255, 0),
+    GREEN(0, 0, 255);
+    
+    fun getAllColor(): String {
+        return "red, yellow, green"
+    }
+    
+}
+```
+
+* when
+* when도 if와 같이 식이다.
+* when의 사용법은 예제로 확인한다.
+```kotlin
+fun main() {
+    val a = 10
+    val b = 20
+
+    //식으로 표현 된다.
+    val name = when(a > b) {
+        true -> "true"
+        else -> "false"
+    }
+    println(name)
+
+    val age = when(getResult()) {
+        true -> "true"
+        else -> "false"
+    }
+    println(name)
+
+    //인자 없이도 가능
+    val body = when {
+        a>b -> "man"
+        else -> "woman"
+    }
+    
+    //스마트 캐스팅에서도 가능
+    val foot = when(a is Int) {
+        a>5 -> 250
+        a<5 -> 260
+        else -> 300
+    }
+}
+```
+
+## 스마트 캐스트(타입 검사, 캐스트)
+* is를 통해 타입 검사 + 캐스트 가능
+* as를 통해서는 캐스트만 가능하다.
+* 주의사항은 val로 선언 되어야 하고 custom property는 사용 안한 경우만 가능하다.
+이런 경우는 as로 캐스트 해야 한다.
+  
+!!! tip
+* 코드 블록의 마지막 식이 블록의 결과 값으로 반환 된다.
+* 함수에서는 성립이 안된다.
+
+## 반복문
+* while문은 기존 java와 동일하여 pass
+* for문
+  * java와 다르게 초기, 증감, 최종 값이 없고 range를 사용한다.
+  * 범위는 양 끝까지 범위에 사용(범위가 0..10이라면 11번 반복한다.)
+  * 끝까지 범위에 사용안하려면 until을 사용한다.(0 until 10)
+  * 역순으로는 downTo를 사용하고 증가값은 step으로 구분한다.
+```kotlin
+    val range = 0..10
+    //11 번 loop
+    for(i in range){
+        println(i)
+    }
+
+    //10 번 loop
+    for(i in 0 until 10){
+        println(i)
+    }
+
+    //역순 순회
+    for(i in 10 downTo 0){
+        println(i)
+    }
+
+    //증감
+    for(i in 0 until 10 step 3){
+        println(i)
+    }
+
+    for(i in 10 downTo 0 step 2){
+        println(i)
+    }
+```  
+* for문은 map, list에서도 사용 가능하다.
+* map에서는 key, value를 list에서는 idx, value를 같이 loop 가능하다.
+```kotlin
+    val map = mutableMapOf<String, String>()
+    map["a"] = "1"
+    map["b"] = "2"
+    map["c"] = "3"
+
+    for((key, value) in map){
+        println("$key - $value")
+    }
+    
+    val list = listOf(10, 11, 12, 13)
+    for((idx, value) in list.withIndex()){
+        println("$idx - $value")
+    }
+```
+
+## 코틀린 예외 처리
+* 자바와 같이 try catch finally로 처리한다.
+* 자바와 같이 throw로 예외를 던진다.
+* 자바와는 다르게 예외 처리시 method에 throws가 없다.  
+  체크예외, 언체크예외를 구분하지 않는다.
+* 자바에서 try with resource는 kotlin에서는 없다.
+* try 식으로 표현된다.
+```kotlin
+val exception = try {
+    "abc"
+    throw RuntimeException("abc")
+} catch (e: RuntimeException){
+    "eee"
+    return //메서드 반환
+} finally {
+    "bbb"
+}
+```
 
 
 
