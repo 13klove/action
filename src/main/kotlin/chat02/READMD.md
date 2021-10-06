@@ -272,9 +272,20 @@ val exception = try {
     throw RuntimeException("abc")
 } catch (e: RuntimeException){
     "eee"
-    return //메서드 반환
+    return //다음 로직 실행 안함
 } finally {
     "bbb"
+}
+
+try {
+  "abc"
+  throw RuntimeException("abc")
+  return //메서드 반화
+} catch (e: RuntimeException){
+  "eee"
+  return //메서드 반환
+} finally {
+  "bbb"
 }
 ```
 
