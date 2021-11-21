@@ -265,7 +265,7 @@ fun main() {
 
 ### 구조 분해 선언과 루프
 * 함수 본문 내의 선언문뿐 아니라 변수 선언이 들어갈 수 있는 장소면 어디서든 구조 분해는 가능하다.
-* 푸르 안에서도 구조 분해 선ㄱㄷ언을 사용할 수 있다.
+* 푸르 안에서도 구조 분해 선언을 사용할 수 있다.
 ```kotlin
 fun main() {
     //map의 확장함수로 component1, component2를 제공 한다.
@@ -276,3 +276,257 @@ fun main() {
     }
 }
 ```
+
+## 프로퍼티 접근자 로직 재활용: 위임 프로퍼티
+* 위임 프로퍼티를 사용하면 값을 뒷받침하는 필드에 단순히 저장하는 것보다 더 복잡한 방식으로 작동하는 프로퍼티를 쉽게 구현 할 수 있다.
+* 프로퍼티 위임을 사용해 자신의 값을 field가 아닌 db, 세션, 맵에 저장 할 수 있다.
+* 위임을 통해 객체가 직접 작업을 수행하지 않고 다른 도우미 객체가 그 작업을 처리하게 하는 패턴이다.
+* 작업을 대신 처리하는 객체를 위임 객체라고 한다.
+
+### 위임 프로퍼티 소개
+* 프로퍼티 위임 객체가 따라야 하는 관례를 따르는 모든 객체를 위임에 사용할 수 있다.
+* 프로퍼티 위임 관례를 따르는 delegate는 getValue, setValue를 정의해야 한다. 변경 불가능은 getValue만 한다.
+```kotlin
+class Foo {
+  //by 뒤에 있는 객체를 위임 객체라고 한다.
+  //실직적으로 위임 객체가 일을 한다.
+    var p: Type by Delegate()
+}
+
+//컴파일 해보면 아래와 같은 코드가 된다.
+class Foo {
+  private val delegate = Delegate()
+  val p: Type
+   set(value: Type) = delegate.setValue(value)
+   get() = delegate.getValue()
+}
+
+class Delegate {
+    operator fun getValue(): Type
+    operator fun setValue(value: Type)
+}
+```
+
+### 위임 프로퍼티 사용: by, lazy를 사용한 프로퍼티 초기화 지연
+* 지연 초기화는 객체의 일부분을 초기화 하지 않고 필요한 경우 초기화하는 패턴이다.
+* 보통 초기화에 많은 자원을 사용하는 경우 쓴다.
+* lazy는 kotlin 관례에 맞는 시그니처의 getValue 메소드가 들어있는 객체를 반환다.
+* 즉 by lazy로 위임 프로퍼티를 만들 수 있다.
+* lazy는 기본이 thread safe다 필요에 따라 동기화에 사용할 lock을 lazy에 전달할 수도 있다.
+  * multy thread에서는 동기화 방지를 할 수 있다.
+```kotlin
+class Email {
+}
+
+class PersonEmail(val name: String) {
+    //여기서는 뒷받침하는 프로퍼티 기법을 사용한다.
+    //_email라는 프로퍼티는 값을 저장하고 다른 프로퍼티인 email은 _email라는 프로퍼티에 대한 읽기 연산을 제공한다.
+    private var _emails: List<Email>? = null
+    val emails: List<Email>
+        get() {
+            if (_emails.isNullOrEmpty()) {
+                _emails = loadEmails(this)
+            }
+            return _emails!!
+        }
+    
+    fun loadEmails(person: PersonEmail): List<Email> {
+        println("print mail")
+        return listOf(Email())
+    }
+}
+
+class PersonEmail01(val name: String) {
+    //lazy는 getValue 메소드가 들어있는 객체로 반환 한다.
+    val emails by lazy { loadEmails(this) }
+
+    fun loadEmails(person: PersonEmail01): List<Email> {
+        println("print mail")
+        return listOf(Email())
+    }    
+}
+```
+
+### 위임 프로퍼티 구현
+* 예시로 위임 프로퍼티 구현을 설면한다.
+* 프로퍼티가 바뀔떄마다 리스너에게 변경 통지를 보낸다.
+* 여기서 사용되는 객체는 java에서는 PropertyChangeSupport, PropertyChangeEvent다
+* PropertyChangeSupport는 리스너의 목록을 관리하고, PropertyChangeEvent가 들어오면 목록의 모든 리스너에게 이벤트를 통지한다.
+* by의 우항에는 식이 꼭 새인스턴트를 만들 필요는 없다. 함수 호출, 다른 프로퍼티가 될 수 있다.
+* getValue, setValue는 반드시 제공해야 한다.
+```kotlin
+class Person01(
+    val name: String,
+    age: Int,
+    salary: Int
+) : PropertyChangeAware() {
+
+    var age = age
+        set(value) {
+            val oldValue = age
+            field = value
+            changeSupport.firePropertyChange("age", oldValue, value)
+        }
+
+    var salary = salary
+        set(value) {
+            val oldValue = salary
+            field = value
+            changeSupport.firePropertyChange("salary", oldValue, value)
+        }
+
+}
+
+class Person02(val name: String, age: Int, salary: Int) : PropertyChangeAware() {
+    val _age = ObservableProperty("age", age, changeSupport)
+    var age: Int
+        get() = _age.getValue()
+        set(value) {_age.setValue(value)}
+
+    val _salary = ObservableProperty("salary", salary, changeSupport)
+    var salary: Int
+        get() = _salary.getValue()
+        set(value) {_salary.setValue(value)}
+}
+
+class Person03(val name: String, age: Int, salary: Int): PropertyChangeAware() {
+    var age: Int by ObservableProperty02(age, changeSupport)
+    var salary: Int by ObservableProperty02(salary, changeSupport)
+}
+
+class Person04(val name: String, age: Int, salary: Int): PropertyChangeAware() {
+    private val observer = {
+        prop: KProperty<*>, oldValue: Int, newValue: Int ->
+        changeSupport.firePropertyChange(prop.name, oldValue, newValue)
+    }
+
+    var age: Int by Delegates.observable(age, observer)
+    var salary: Int by Delegates.observable(salary, observer)
+}
+
+class ObservableProperty (
+    val propName: String,
+    var propValues: Int,
+    val changeSupport: PropertyChangeSupport
+) {
+
+    fun getValue() = propValues
+    fun setValue(value: Int) {
+        val oldValue = propValues
+        propValues = value
+        changeSupport.firePropertyChange(propName, oldValue, propValues)
+    }
+
+}
+
+class ObservableProperty02(
+    var propValue: Int, val changeSupport: PropertyChangeSupport
+) {
+    //kolin 관례를 사용한 operator 가 붙는다.
+    //KProperty를 통해 프로퍼티 명을 가져올 수 있다.
+    operator fun getValue(p: Person03, prop: KProperty<*>) = propValue
+    operator fun setValue(p: Person03, prop: KProperty<*>, value: Int) {
+        val oldValue = propValue
+        propValue = value
+        changeSupport.firePropertyChange(prop.name, oldValue, value)
+    }
+}
+
+
+fun main() {
+    val p = Person01("dmitty", 34, 2000)
+    p.addPropertyChangeListener(
+        PropertyChangeListener {
+            with(it) {
+                println("property $propertyName change from $oldValue -> $newValue")
+            }
+        }
+    )
+
+    p.age = 35
+    p.salary = 2100
+
+    val p02 = Person02("dum", 20, 1000)
+    p02.addPropertyChangeListener(
+        PropertyChangeListener {
+            with(it) {
+                println("property $propertyName change from $oldValue -> $newValue")
+            }
+        }
+    )
+
+    p02.age = 10
+    p02.salary = 5000
+
+    val p03 = Person03("aaa", 10, 1000)
+    p03.addPropertyChangeListener(
+        PropertyChangeListener {
+            with(it) {
+                println("property $propertyName change from $oldValue -> $newValue")
+            }
+        }
+    )
+
+    p03.age = 50
+    p03.salary = 555555
+
+    val p04 = Person04("bbb", 1, 1)
+    p04.addPropertyChangeListener(
+        PropertyChangeListener {
+            with(it) {
+                println("property $propertyName change from $oldValue -> $newValue")
+            }
+        }
+    )
+
+    p04.addPropertyChangeListener(
+        PropertyChangeListener {
+            with(it) {
+                println("property3333333333333 $propertyName change from $oldValue -> $newValue")
+            }
+        }
+    )
+
+    p04.age = 2
+    p04.salary = 2
+}
+```
+
+## 위임 프로퍼티 컴파일 규칙
+### 프포퍼티 값을 맵에 저장
+* 프로퍼티를 동적으로 정의할 수 있는 객체를 만들 때 위임 프로퍼티를 활용하는 경우가 있다.
+* 확장 가능한 객체라 한다.
+```kotlin
+  class MapPerson {
+
+  private val _attributes = mutableMapOf<String, String>()
+  fun setAttribute(attrName: String, value: String) {
+    _attributes[attrName] = value
+  }
+
+  val name: String
+    get() = _attributes["name"]!!
+}
+
+fun main() {
+  val p = MapPerson()
+  val data = mapOf("name" to "aaa", "company" to "jer")
+  for((field, value) in data) {
+    p.setAttribute(field, value)
+  }
+
+  println(p.name)
+}
+
+class MapPerson01 {
+  // map은 getValue, setValue를 이미 확장 함수로 제공하기에 가능하다.
+  private val _attributes = mutableMapOf<String, String>()
+  fun setAttribute(attrName: String, value: String) {
+    _attributes[attrName] = value
+  }
+  val name by _attributes
+}
+```
+
+### 프레임워크에서 위임 프로퍼티 활용
+이부분은 skip 합니다. 
