@@ -305,4 +305,32 @@ fun lookForAlice01(people: List<Person>) {
 ```
 
 ### 람다로부터 반환: 레이블을 사용한 return
-* 
+* 람다 식도 로컬 return을 사용할 수 있다.
+* 로컬 return은 loop문의 break와 비슷한 역할을 한다.
+  * 람다식을 종료하고 람다를 호출한 곳으로 이동해 로직을 계속 진행한다.
+* 로컬 return, 넌 로컬 return을 구분하기 위해 레이블을 사용한다.
+* 로컬 return을 하기 위해서는 람다에 레이블을 지정하고 return 후에 레이블을 입력한다.
+* 람다 식의 레이블을 명시하면 함수 이름을 레이블로 사용할 수 없고 2개 이상 레이블을 붙일 수 없다.
+```kotlin
+fun lookForAlice(people: List<Person>) {
+    people.forEach label@ {
+        if (it.name == "alice") return@label
+    }
+  println("alice might be somewhere")
+}
+
+//혹은 인라인 함수의 이름을 사용해도 된다.
+fun lookForAlice(people: List<Person>) {
+    people.forEach { 
+        if (it.name == "alice") return@forEach
+    }
+}
+```
+
+### 무명 함수: 기본적으로 로컬 return
+* 무명 함수는 코드 블록을 함수에 넘길 때 사용할 수 있는 다른 방법이다.
+* 무명 함수는 일반 함수와 비슷해 보이지만 함수 이름이나 파라미터 타입을 생략할 수 있다.
+* 무명 함수는 기본적으로 로컬 return을 한다.
+```kotlin
+people.filter(fun (person) = person.age < 30)
+```
