@@ -224,7 +224,7 @@ open class Animal {
 
 class Herd<out T: Animal> { //out 공변적임을 명시하지 않으면 feedAll에서 error 발생한다.
     val size: Int get() = 5
-    operator fun get(i: Int): T {return Animal() as T}
+    operator fun get(i: Int): T {return Cat() as T}
 }
 
 fun feedAll(animals: Herd<Animal>) {
@@ -240,7 +240,7 @@ class Cat: Animal() {
 fun takeCareOfCats(cats: Herd<Cat>) {
     for( i in 0 until cats.size) {
         cats[i].cleanLitter()
-        feedAll(cats)//오류발생
+        feedAll(cats)
     }
 }
 ```
